@@ -1,0 +1,49 @@
+version: '3.5'
+volumes:
+  losst-vl:
+networks:
+  losst-network:
+services:
+  docker-nginx:
+    image: nginx
+    ports:
+      - '8094:80'
+    volumes:
+      - ./front:/usr/share/nginx/html
+      - ./build:/usr/share/nginx/html/react
+      - ./nginx:/etc/nginx/conf.d
+    networks:
+      - losst-network 
+  docker-mysql:
+    image: mysql
+    volumes:
+      - losst-vl:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=database
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    networks:
+      - losst-network
+  flask:
+    build: ./backend
+    container_name: backend-flask
+    environment:
+      - PYTHONUNBUFFERED=True
+      - PMA_HOST=docker-mysql
+    restart: on-failure
+    volumes:
+      - ./backend:/backend
+    ports:
+      - "8095:5000"
+    networks:
+      - losst-network
+    command: gunicorn main:"create_flask_app()" -b 0.0.0.0:5000 --reload         
+  docker-phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    ports:
+      - "8096:80"
+    environment:
+      - PMA_HOST=docker-mysql
+    networks:
+      - losst-network
